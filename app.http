@@ -1,0 +1,20 @@
+POST http://127.0.0.1:5000/login
+Content-Type: multipart/form-data; boundary=WebAppBoundary
+
+--WebAppBoundary
+Content-Disposition: form-data; name="username"
+
+caozh
+--WebAppBoundary--
+Content-Disposition: form-data; name="password"
+
+123456
+
+###
+
+GET http://127.0.0.1:5000/profile
+
+###
+
+
+GET http://127.0.0.1:5000/logout
