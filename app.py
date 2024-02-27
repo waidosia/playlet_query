@@ -1,40 +1,27 @@
+import time
 from hashlib import md5
 
-from flask import Flask, request, jsonify, session, redirect, url_for
-import psycopg2
+from flask import Flask, request, session, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.secret_key = "your_secret_key"  # 设置用于加密Session的密钥
+app.secret_key = "playlet"  # 设置用于加密Session的密钥
+app.permanent_session_lifetime = 60  # 设置Session的过期时间为60秒
+app.config['PERMANENT_SESSION_LIFETIME'] = 60  # 设置Session的过期时间为60秒
+app.config['SESSION_REFRESH_EACH_REQUEST'] = True  # 每个请求都刷新Session的过期时间
 
-# 连接到PG数据库
-conn = psycopg2.connect(
-    host="...",
-    port="5432",
-    database="",
-    user="",
-    password=""
-)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://admin:CZ2000.07.16@175.178.123.76:5432/playlet'  # 替换为你的数据库连接信息
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# 创建用户表
-def create_user_table():
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            user_id SERIAL PRIMARY KEY,
-            username VARCHAR(50) NOT NULL,
-            password VARCHAR(50) NOT NULL,
-            nickname VARCHAR(50)
-        )
-    """)
-    conn.commit()
+db = SQLAlchemy(app)
 
 
-# 根据用户名查找用户
-def find_user_by_username(username):
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE username = %s", (username,))
-    user = cursor.fetchone()
-    return user
+class User(db.Model):
+    __tablename__ = 'users'
+    user_id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False)
+    password = db.Column(db.String(50), nullable=False)
+    nickname = db.Column(db.String(50))
 
 def encrypt_md5(s):
     # 创建md5对象
@@ -45,14 +32,25 @@ def encrypt_md5(s):
     return new_md5.hexdigest()
 
 
+@app.before_request
+def before_request():
+    if 'last_activity' in session:
+        last_activity = session['last_activity']
+        current_time = time.time()
+        if current_time - last_activity > 300:  # 如果用户最后活动时间超过300秒（5分钟），则注销用户
+            session.pop('username', None)
+    session['last_activity'] = time.time()  # 更新用户的最后活动时间
+
+
 @app.route("/login", methods=["POST"])
 def login():
     username = request.form["username"]
     password = request.form["password"]
     password = encrypt_md5(password)
-    user = find_user_by_username(username)
-    if user and user[2] == password:
+    user = User.query.filter_by(username=username).first()
+    if user and user.password == password:
         session["username"] = username  # 将用户名保存到Session中
+        session.permanent = True  # 设置Session为永久有效
         return redirect(url_for("profile"))
     else:
         return "Invalid username or password", 401
@@ -61,6 +59,7 @@ def login():
 @app.route("/profile")
 def profile():
     if "username" in session:
+        session.modified = True  # 标记Session已被修改
         return f"Welcome, {session['username']}!"
     else:
         return "You are not logged in"
