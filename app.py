@@ -10,7 +10,7 @@ app.permanent_session_lifetime = 60  # 设置Session的过期时间为60秒
 app.config['PERMANENT_SESSION_LIFETIME'] = 60  # 设置Session的过期时间为60秒
 app.config['SESSION_REFRESH_EACH_REQUEST'] = True  # 每个请求都刷新Session的过期时间
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://admin:CZ2000.07.16@175.178.123.76:5432/playlet'  # 替换为你的数据库连接信息
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://xxx:xxx@xxx:5432/playlet'  # 替换为你的数据库连接信息
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
